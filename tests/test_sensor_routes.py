@@ -302,6 +302,8 @@ class SensorRoutesTestCases(unittest.TestCase):
         for data in json_data:
             self.assertIsInstance(data, dict)
 
+            uuid = data['device_uuid']
+
             conn = sqlite3.connect('test_database.db')
             conn.row_factory = sqlite3.Row
             cur = conn.cursor()
