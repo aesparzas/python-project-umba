@@ -1,10 +1,12 @@
-from marshmallow import Schema, fields
+from marshmallow import Schema, fields, validate
 
 
 class ReadingSerializer(Schema):
-    type = fields.String(required=True)
+    type = fields.String(required=True,
+                         validate=validate.OneOf(["temperature", "humidity"]))
     device_uuid = fields.String(required=True)
-    value = fields.Number(required=True)
+    value = fields.Number(required=True,
+                          validate=validate.Range(min=0, max=100))
     date_created = fields.Date()
 
 

@@ -25,7 +25,6 @@ def create_app(test_config=None):
 
     db.init_app(app)
     app.register_blueprint(api)
-    print(app.url_map)
 
     return app
 
