@@ -1,4 +1,8 @@
+import datetime
 import json
+import statistics
+
+import numpy as np
 import pytest
 import sqlite3
 import time
@@ -38,7 +42,7 @@ class SensorRoutesTestCases(unittest.TestCase):
     def test_device_readings_get(self):
         # Given a device UUID
         # When we make a request with the given UUID
-        request = self.client().get('/devices/{}/readings/'.format(self.device_uuid))
+        request = self.client().get(f'/devices/{self.device_uuid}/readings')
 
         # Then we should receive a 200
         self.assertEqual(request.status_code, 200)
@@ -49,11 +53,12 @@ class SensorRoutesTestCases(unittest.TestCase):
     def test_device_readings_post(self):
         # Given a device UUID
         # When we make a request with the given UUID to create a reading
-        request = self.client().post('/devices/{}/readings/'.format(self.device_uuid), data=
-            json.dumps({
-                'type': 'temperature',
-                'value': 100 
-            }))
+        data = {
+            'type': 'temperature',
+            'value': 100
+        }
+        request = self.client().post(f'/devices/{self.device_uuid}/readings',
+                                     data=json.dumps(data))
 
         # Then we should receive a 201
         self.assertEqual(request.status_code, 201)
@@ -62,7 +67,9 @@ class SensorRoutesTestCases(unittest.TestCase):
         conn = sqlite3.connect('test_database.db')
         conn.row_factory = sqlite3.Row
         cur = conn.cursor()
-        cur.execute('select * from readings where device_uuid="{}"'.format(self.device_uuid))
+        cur.execute(
+            f'select * from readings where device_uuid="{self.device_uuid}"'
+        )
         rows = cur.fetchall()
 
         # We should have three
@@ -73,14 +80,36 @@ class SensorRoutesTestCases(unittest.TestCase):
         This test should be implemented. The goal is to test that
         we are able to query for a device's temperature data only.
         """
-        self.assertTrue(False)
+        url = f'/devices/{self.device_uuid}/readings?type=temperature'
+        request = self.client().get(url)
+        self.assertEqual(request.status_code, 200)
+        conn = sqlite3.connect('test_database.db')
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+        cur.execute(
+            f'''select * from readings where device_uuid="{self.device_uuid}"
+            and type="temperature"'''
+        )
+        rows = cur.fetchall()
+        self.assertEqual(len(rows), len(json.loads(request.data)))
 
     def test_device_readings_get_humidity(self):
         """
         This test should be implemented. The goal is to test that
         we are able to query for a device's humidity data only.
         """
-        self.assertTrue(False)
+        url = f'/devices/{self.device_uuid}/readings?type=temperature'
+        request = self.client().get(url)
+        self.assertEqual(request.status_code, 200)
+        conn = sqlite3.connect('test_database.db')
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+        cur.execute(
+            f'''select * from readings where device_uuid="{self.device_uuid}"
+            and type="temperature"'''
+        )
+        rows = cur.fetchall()
+        self.assertEqual(len(rows), len(json.loads(request.data)))
 
     def test_device_readings_get_past_dates(self):
         """
@@ -89,42 +118,130 @@ class SensorRoutesTestCases(unittest.TestCase):
         a specific date range. We should only get the readings
         that were created in this time range.
         """
-        self.assertTrue(False)
+
+        from_date = int(time.time()) - 100
+        prev_date = (datetime.datetime.fromtimestamp(from_date).date()
+                     - datetime.timedelta(days=1))
+        fd_isoformat = prev_date.isoformat()
+        from_date = int(time.mktime(prev_date.timetuple()))
+
+        to_date = int(time.time()) - 50
+        prev_date = (datetime.datetime.fromtimestamp(to_date).date()
+                     - datetime.timedelta(days=1))
+        td_isoformat = prev_date.isoformat()
+        to_date = int(time.mktime(prev_date.timetuple()))
+
+        url = f'/devices/{self.device_uuid}/readings'\
+              + f'?date_to={td_isoformat}'\
+              + f'&date_from={fd_isoformat}'
+        request = self.client().get(url)
+        self.assertEqual(request.status_code, 200)
+        conn = sqlite3.connect('test_database.db')
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+        cur.execute(
+            f'''select * from readings where device_uuid="{self.device_uuid}"
+            and date_created < {to_date} and date_created > {from_date}'''
+        )
+        rows = cur.fetchall()
+        self.assertEqual(len(rows), len(json.loads(request.data)), f'{from_date} {to_date}')
 
     def test_device_readings_min(self):
         """
         This test should be implemented. The goal is to test that
         we are able to query for a device's min sensor reading.
         """
-        self.assertTrue(False)
+        url = f'/devices/{self.device_uuid}/readings/min'
+        request = self.client().get(url)
+        self.assertEqual(request.status_code, 200)
+        conn = sqlite3.connect('test_database.db')
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+        cur.execute(
+            f'select * from readings where device_uuid="{self.device_uuid}"'
+        )
+        rows = cur.fetchall()
+        values = [r['value'] for r in rows]
+        self.assertEqual(min(values), json.loads(request.data)['value'])
 
     def test_device_readings_max(self):
         """
         This test should be implemented. The goal is to test that
         we are able to query for a device's max sensor reading.
         """
-        self.assertTrue(False)
+        url = f'/devices/{self.device_uuid}/readings/max'
+        request = self.client().get(url)
+        self.assertEqual(request.status_code, 200)
+        conn = sqlite3.connect('test_database.db')
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+        cur.execute(
+            f'select * from readings where device_uuid="{self.device_uuid}"'
+        )
+        rows = cur.fetchall()
+        values = [r['value'] for r in rows]
+        self.assertEqual(max(values), json.loads(request.data)['value'])
 
     def test_device_readings_median(self):
         """
         This test should be implemented. The goal is to test that
         we are able to query for a device's median sensor reading.
         """
-        self.assertTrue(False)
+        url = f'/devices/{self.device_uuid}/readings/median'
+        request = self.client().get(url)
+        self.assertEqual(request.status_code, 200)
+        conn = sqlite3.connect('test_database.db')
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+        cur.execute(
+            f'select * from readings where device_uuid="{self.device_uuid}"'
+        )
+        rows = cur.fetchall()
+        values = [r['value'] for r in rows]
+        self.assertEqual(statistics.median(values),
+                         json.loads(request.data)['value'])
 
     def test_device_readings_mean(self):
         """
         This test should be implemented. The goal is to test that
         we are able to query for a device's mean sensor reading value.
         """
-        self.assertTrue(False)
+        url = f'/devices/{self.device_uuid}/readings/mean'
+        request = self.client().get(url)
+        self.assertEqual(request.status_code, 200)
+        conn = sqlite3.connect('test_database.db')
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+        cur.execute(
+            f'select * from readings where device_uuid="{self.device_uuid}"'
+        )
+        rows = cur.fetchall()
+        values = [r['value'] for r in rows]
+        self.assertEqual(statistics.mean(values),
+                         json.loads(request.data)['value'])
 
     def test_device_readings_mode(self):
         """
         This test should be implemented. The goal is to test that
         we are able to query for a device's mode sensor reading value.
         """
-        self.assertTrue(False)
+        url = f'/devices/{self.device_uuid}/readings/mode'
+        request = self.client().get(url)
+        self.assertEqual(request.status_code, 200)
+        conn = sqlite3.connect('test_database.db')
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+        cur.execute(
+            f'select * from readings where device_uuid="{self.device_uuid}"'
+        )
+        rows = cur.fetchall()
+        values = [r['value'] for r in rows]
+        try:
+            self.assertEqual(statistics.mode(values),
+                             json.loads(request.data)['value'])
+        except statistics.StatisticsError:
+            self.assertEqual("Multiple Modes",
+                             json.loads(request.data)['value'])
 
     def test_device_readings_quartiles(self):
         """
@@ -132,4 +249,21 @@ class SensorRoutesTestCases(unittest.TestCase):
         we are able to query for a device's 1st and 3rd quartile
         sensor reading value.
         """
-        self.assertTrue(False)
+        url = f'/devices/{self.device_uuid}/readings/quartiles'
+        request = self.client().get(url)
+        self.assertEqual(request.status_code, 200)
+        json_data = json.loads(request.data)
+
+        conn = sqlite3.connect('test_database.db')
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+        cur.execute(
+            f'select * from readings where device_uuid="{self.device_uuid}"'
+        )
+        rows = cur.fetchall()
+        values = [r['value'] for r in rows]
+        quartile_1 = np.percentile(values, 25)
+        quartile_3 = np.percentile(values, 75)
+
+        self.assertEqual(quartile_1, json_data['quartile_1'])
+        self.assertEqual(quartile_3, json_data['quartile_3'])

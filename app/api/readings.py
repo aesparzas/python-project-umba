@@ -67,7 +67,7 @@ class DeviceView():
             rows_dict.append(row_dict)
 
         return ReadingSerializer(many=True).dump(rows_dict)
-    
+
 
 class RootDeviceView(DeviceView):
     def post(self, *args, **kwargs):
@@ -126,6 +126,12 @@ class MetricsDeviceView(DeviceView):
 
     def mean(self, *args, **kwargs):
         return self._metric_to_query(kwargs['uuid'], statistics.mean)
+
+    def mode(self, *args, **kwargs):
+        try:
+            return self._metric_to_query(kwargs['uuid'], statistics.mode)
+        except statistics.StatisticsError:
+            return jsonify({"value": "Multiple Modes"})
 
 
 @api.route('/devices/<uuid>/readings', endpoint='readings',
