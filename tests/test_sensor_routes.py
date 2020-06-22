@@ -267,3 +267,46 @@ class SensorRoutesTestCases(unittest.TestCase):
 
         self.assertEqual(quartile_1, json_data['quartile_1'])
         self.assertEqual(quartile_3, json_data['quartile_3'])
+
+    def summary_has_all_keys(self):
+        """
+        Test that evaluates summary has all keys in all elements
+        """
+        url = f'/devices/{self.device_uuid}/readings/summary'
+        request = self.client().get(url)
+        self.assertEqual(request.status_code, 200)
+        json_data = json.loads(request.data)
+        self.assertIsInstance(json_data, list)
+        for data in json_data:
+            self.assertIsInstance(data, dict)
+            self.assertIn('device_uuid', data)
+            self.assertIn('max_reading_value', data)
+            self.assertIn('mean_reading_value', data)
+            self.assertIn('median_reading_value', data)
+            self.assertIn('min_reading_value', data)
+            self.assertIn('mode_reading_value', data)
+            self.assertIn('number_of_readings', data)
+            self.assertIn('quartile_1_value', data)
+            self.assertIn('quartile_3_value', data)
+
+    def summary_has_correct_groups(self):
+        """
+        Test that evaluates if summary has the correct number of readings
+        per each device_uuid
+        """
+        url = f'/devices/{self.device_uuid}/readings/summary'
+        request = self.client().get(url)
+        self.assertEqual(request.status_code, 200)
+        json_data = json.loads(request.data)
+        self.assertIsInstance(json_data, list)
+        for data in json_data:
+            self.assertIsInstance(data, dict)
+
+            conn = sqlite3.connect('test_database.db')
+            conn.row_factory = sqlite3.Row
+            cur = conn.cursor()
+            cur.execute('SELECT device_uuid FROM readings'
+                        + f' WHERE device_uuid = "{uuid}"')
+            rows = cur.fetchall()
+
+            self.assertEqual(data['number_of_readings'], len(rows))

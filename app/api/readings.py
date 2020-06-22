@@ -95,19 +95,20 @@ class RootDeviceView(DeviceView):
 
 class MetricsDeviceView(DeviceView):
 
-    def _metric_to_query(self, uuid, func):
-        queried = self.get_queried_data(uuid)
+    def _metric_to_query(self, uuid, func, queried=None):
+        if not queried:
+            queried = self.get_queried_data(uuid)
         value = None
         values = [r['value'] for r in queried]
         if values:
             value = func(values)
-        return jsonify({'value': value})
+        return {'value': value}
 
     def max(self, *args, **kwargs):
-        return self._metric_to_query(kwargs['uuid'], max)
+        return jsonify(self._metric_to_query(kwargs['uuid'], max))
 
     def min(self, *args, **kwargs):
-        return self._metric_to_query(kwargs['uuid'], min)
+        return jsonify(self._metric_to_query(kwargs['uuid'], min))
 
     def quartiles(self, *args, **kwargs):
         queried = self.get_queried_data(kwargs.get('uuid'))
@@ -118,20 +119,70 @@ class MetricsDeviceView(DeviceView):
             quartile_1 = np.percentile(values, 25)
             quartile_3 = np.percentile(values, 75)
         data = dict(quartile_1=quartile_1, quartile_3=quartile_3)
-        return jsonify(data)
+        return data
 
     def median(self, *args, **kwargs):
-        return self._metric_to_query(kwargs['uuid'], statistics.median)
-        pass
+        return jsonify(self._metric_to_query(kwargs['uuid'],
+                                             statistics.median))
 
     def mean(self, *args, **kwargs):
-        return self._metric_to_query(kwargs['uuid'], statistics.mean)
+        return jsonify(self._metric_to_query(kwargs['uuid'], statistics.mean))
 
     def mode(self, *args, **kwargs):
         try:
             return self._metric_to_query(kwargs['uuid'], statistics.mode)
         except statistics.StatisticsError:
             return jsonify({"value": "Multiple Modes"})
+
+    def summary(self, *args, **kwargs):
+        return_data = []
+
+        cur = self.db.execute('SELECT device_uuid FROM readings'
+                              + ' GROUP BY device_uuid')
+        rows = cur.fetchall()
+        devices_ids = [r['device_uuid'] for r in rows]
+
+        for device_uuid in devices_ids:
+            queried = self.get_queried_data(device_uuid)
+            number_of_readings = len(queried)
+
+            max_reading_value = self._metric_to_query(device_uuid,
+                                                      max,
+                                                      queried)['value']
+            min_reading_value = self._metric_to_query(device_uuid,
+                                                      min,
+                                                      queried)['value']
+            median_reading_value = self._metric_to_query(device_uuid,
+                                                         statistics.median,
+                                                         queried)['value']
+            try:
+                mode_reading_value = self._metric_to_query(device_uuid,
+                                                           statistics.mode,
+                                                           queried)['value']
+            except statistics.StatisticsError:
+                mode_reading_value = 'Multiple Modes'
+            mean_reading_value = self._metric_to_query(device_uuid,
+                                                       statistics.mean,
+                                                       queried)['value']
+
+            quartiles = self.quartiles(*args, **kwargs)
+            quartile_1_value = quartiles['quartile_1']
+            quartile_3_value = quartiles['quartile_3']
+
+            data = {
+                'device_uuid': device_uuid,
+                'number_of_readings': number_of_readings,
+                'max_reading_value': max_reading_value,
+                'min_reading_value': min_reading_value,
+                'median_reading_value': median_reading_value,
+                'mode_reading_value': mode_reading_value,
+                'mean_reading_value': mean_reading_value,
+                'quartile_1_value': quartile_1_value,
+                'quartile_3_value': quartile_3_value,
+            }
+            return_data.append(data)
+
+        return jsonify(return_data)
 
 
 @api.route('/devices/<uuid>/readings', endpoint='readings',
