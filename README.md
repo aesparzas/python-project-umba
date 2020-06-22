@@ -1,5 +1,31 @@
 # Umba Backend Homework Assignment
 
+## Getting started
+To install and run the project you need to create and activate a virtual enviroment after cloning the project.
+To do that, assuming you are on the project root folder, you have to type (linux example)
+
+```
+mkdir tmp
+python -m venv tmp/venv
+. tmp/venv/bin/activate
+```
+
+Then you need to install all the required packages. To do that
+
+```
+pip install -r requirements.txt
+```
+
+The project has already a Makefile that allows you to run it just typing
+```
+make server
+```
+
+Also you can run the unittests by typing
+```
+make test
+```
+
 ## Introduction
 Imagine a system where hundreds of thousands of hardware devices are concurrently uploading temperature and humidity sensor data.
 
@@ -46,6 +72,7 @@ This request can be made via a `GET` to `/devices/<uuid>/readings/quartiles/` an
 ```
 
 Finally, the API supports a summary endpoint for all devices and readings. When making a `GET` request to this endpoint, we should receive a list of summaries as defined below, where each summary is sorted in descending order by number of readings per device.
+The url to access this endpoint is `/devices/<uuid>/summary`
 
 ```
     [
@@ -63,34 +90,37 @@ Finally, the API supports a summary endpoint for all devices and readings. When 
     ]
 ```
 
+NOTE: all of this endpoints accept filtering by `type`, `date_from` and `date_to`
+
 The API is backed by a SQLite database.
 
-## Getting Started
-This service requires Python3. To get started, create a virtual environment using Python3.
+## Design Desitions
 
-Then, install the requirements using `pip install -r requirements.txt`.
+Since the querying is supported by all `GET` views, metrics and no metrics ones, all the querying was grouped in a father class, an the rest of the endpoints just extend that one.
 
-Finally, run the API via `python app.py`.
+For data serialization and validation was used marshmallow since it handles very well validation and parsing of inputs
 
-## Testing
-Tests can be run via `pytest -v`.
+## Future work recommendations
+
+Getting rid of SQLite. Though it has DATE field type, on the inside they are treated as strings and the validation is very poor. That goes to data inconsistency.
+I recommend using postgres and SQLAlchemy as an ORM.
 
 ## Tasks
 Your task is to fork this repo and complete the following:
 
-- [ ] Add field validation. Only *temperature* and *humidity* sensors are allowed with values between *0* and *100*.
-- [ ] Add logic for query parameters for *type* and *start/end* dates.
-- [ ] Implementation
-  - [ ] The max, median and mean endpoints.
-  - [ ] The quartiles endpoint with start/end parameters
-  - [ ] Add the path for the summary endpoint
-  - [ ] Complete the logic for the summary endpoint
-- [ ] Tests
-  - [ ] Wrap up the stubbed out unit tests with your changes
-  - [ ] Add tests for the new summary endpoint
-  - [ ] Add unit tests for any missing error cases
-- [ ] README
-  - [ ] Explain any design decisions you made and why.
-  - [ ] Imagine you're building the roadmap for this project over the next quarter. What features or updates would you suggest that we prioritize?
+- [x] Add field validation. Only *temperature* and *humidity* sensors are allowed with values between *0* and *100*.
+- [x] Add logic for query parameters for *type* and *start/end* dates.
+- [x] Implementation
+  - [x] The max, median and mean endpoints.
+  - [x] The quartiles endpoint with start/end parameters
+  - [x] Add the path for the summary endpoint
+  - [x] Complete the logic for the summary endpoint
+- [x] Tests
+  - [x] Wrap up the stubbed out unit tests with your changes
+  - [x] Add tests for the new summary endpoint
+  - [x] Add unit tests for any missing error cases
+- [x] README
+  - [x] Explain any design decisions you made and why.
+  - [x] Imagine you're building the roadmap for this project over the next quarter. What features or updates would you suggest that we prioritize?
 
 When you're finished, send your git repo link to engineering@umba.com. If you have any questions, please do not hesitate to reach out!
