@@ -74,7 +74,7 @@ phonenumbers==7.7.2
 pluggy==0.6.0
 pre-commit==1.11.1
 psycopg2-binary==2.8.2
-py==1.7.0
+py==1.10.0
 pyasn1==0.1.9
 pycparser==2.14
 pycrypto==2.6.1
